@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft スキン取得</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0d1117; font-family: system-ui, -apple-system, sans-serif; }
+        #canvas-container { width: 100%; height: 100%; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #161b22; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+    </style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1117">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SkinViewer">
+<link rel="apple-touch-icon" href="icon.png">
+
+</head>
+<body class="h-screen w-screen flex flex-col md:flex-row text-gray-100 overflow-hidden select-none">
+
+    <div class="w-full md:w-96 bg-gray-900/95 backdrop-blur-md border-b md:border-b-0 md:border-r border-gray-800 z-10 flex flex-col p-5 shrink-0 overflow-y-auto max-h-screen shadow-2xl">
+        <div class="mb-5 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400">
+                    <i data-lucide="box" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white tracking-wide">MC Skin Viewer 3D</h1>
+                    <p class="text-[11px] text-gray-400">Java版 MCID 3Dモデルビューア</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-5">
+            <div class="bg-gray-800/60 p-3.5 rounded-xl border border-gray-700/50 space-y-2">
+                <label for="usernameJava" class="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                    <i data-lucide="user" class="w-3.5 h-3.5 text-green-400"></i> Java版 Minecraft ID
+                </label>
+                <div class="flex gap-2">
+                    <input type="text" id="usernameJava" placeholder="例: Notch, Jeb_" value="Notch" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500 text-sm text-white placeholder-gray-500 transition-colors">
+                    <button id="loadBtnJava" class="bg-green-600 hover:bg-green-500 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-lg hover:shadow-green-500/20 active:scale-95 shrink-0 flex items-center justify-center">
+                        取得
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-gray-800/60 p-3.5 rounded-xl border border-gray-700/50 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                        <i data-lucide="bookmark" class="w-3.5 h-3.5 text-amber-400"></i> 保存したスキン
+                    </div>
+                    <button id="saveSkinBtn" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-500/30 text-xs px-2.5 py-1 rounded-md transition-colors flex items-center gap-1">
+                        <i data-lucide="plus" class="w-3 h-3"></i> 保存
+                    </button>
+                </div>
+                
+                <div id="savedSkinsList" class="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
+
+                </div>
+
+                <div class="flex gap-2 pt-1 border-t border-gray-700/50">
+                    <button id="exportListBtn" class="w-1/2 bg-gray-700/60 hover:bg-gray-700 text-gray-200 border border-gray-600/50 text-[11px] py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1">
+                        <i data-lucide="download-cloud" class="w-3 h-3 text-cyan-400"></i> エクスポート
+                    </button>
+                    <button id="importListBtn" class="w-1/2 bg-gray-700/60 hover:bg-gray-700 text-gray-200 border border-gray-600/50 text-[11px] py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1">
+                        <i data-lucide="upload-cloud" class="w-3 h-3 text-cyan-400"></i> インポート
+                    </button>
+                    <input type="file" id="importFileInput" accept=".json" class="hidden">
+                </div>
+            </div>
+
+            <div class="bg-gray-800/60 p-3.5 rounded-xl border border-gray-700/50 space-y-3">
+                <div class="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-yellow-400"></i> 表示設定
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-400">アウターレイヤー (帽子/上着)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggleOuter" class="sr-only peer" checked>
+                        <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <button id="downloadBtn" class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-green-500/25 transition-all text-sm active:scale-95 flex items-center justify-center gap-2 border border-green-500/30">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    3Dモデル (GLB) を保存
+                </button>
+                <p class="text-[10px] text-gray-500 text-center">Blender, Unity, VRoid等で即座に読み込み可能</p>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-6 text-center border-t border-gray-800/80">
+            <div class="flex items-center justify-center gap-4 text-xs text-gray-400 mb-2">
+                <span class="flex items-center gap-1"><i data-lucide="mouse-pointer" class="w-3 h-3"></i> ドラッグ: 回転</span>
+                <span class="flex items-center gap-1"><i data-lucide="move" class="w-3 h-3"></i> 右クリック: 移動</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container" class="relative flex-grow bg-gradient-to-b from-gray-950 via-gray-900 to-black cursor-grab active:cursor-grabbing">
+        <div id="loadingOverlay" class="absolute inset-0 bg-gray-950/80 flex items-center justify-center z-20 hidden backdrop-blur-sm">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500 mb-3"></div>
+                <p id="loadingText" class="text-green-400 font-semibold text-xs tracking-wider">スキンを取得中...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageBox" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+        <div class="bg-gray-900 border border-gray-800 p-6 rounded-2xl shadow-2xl max-w-xs w-full text-center transform scale-95 transition-transform duration-300">
+            <div class="w-10 h-10 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto mb-3 border border-red-500/20">
+                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-base text-white font-bold mb-2">通知</h3>
+            <p id="messageText" class="text-xs text-gray-400 mb-5 leading-relaxed"></p>
+            <button onclick="closeMessage()" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg transition-colors text-xs w-full border border-gray-700">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        function showMessage(text) {
+            const box = document.getElementById('messageBox');
+            const boxContent = box.querySelector('div');
+            document.getElementById('messageText').textContent = text;
+            box.classList.remove('hidden');
+            setTimeout(() => {
+                box.classList.remove('opacity-0');
+                boxContent.classList.remove('scale-95');
+                boxContent.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeMessage() {
+            const box = document.getElementById('messageBox');
+            const boxContent = box.querySelector('div');
+            box.classList.add('opacity-0');
+            boxContent.classList.remove('scale-100');
+            boxContent.classList.add('scale-95');
+            setTimeout(() => box.classList.add('hidden'), 300);
+        }
+
+        function setLoading(isLoading, text = "スキンを取得中...") {
+            const overlay = document.getElementById('loadingOverlay');
+            document.getElementById('loadingText').textContent = text;
+            if (isLoading) overlay.classList.remove('hidden');
+            else overlay.classList.add('hidden');
+        }
+
+        const defaultSkins = [
+            "JPAPA", "maaumu", "tatsuya1025", "YuanKuunn", "sivazon",
+            "DNQ_", "AOURI", "29jaga", "Hiro_1289", "naokiri",
+            "Mofukun", "Ruuunaaa", "Amaguri", "Kome_shogun", "Luzaku"
+        ];
+
+        let savedSkins = JSON.parse(localStorage.getItem('mc_saved_skins') || JSON.stringify(defaultSkins));
+
+        function renderSavedSkins() {
+            const listEl = document.getElementById('savedSkinsList');
+            listEl.innerHTML = '';
+
+            if (savedSkins.length === 0) {
+                listEl.innerHTML = '<p class="text-[11px] text-gray-500 text-center py-2">保存されたスキンはありません</p>';
+                return;
+            }
+
+            savedSkins.forEach(name => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-gray-900/80 hover:bg-gray-700/60 border border-gray-700/60 rounded-lg p-1.5 transition-colors group cursor-pointer';
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden flex-grow" onclick="loadJavaSkin('${name}')">
+                        <img src="https://minotar.net/helm/${name}/24" class="w-6 h-6 rounded bg-gray-800 border border-gray-700 shrink-0" alt="${name}" onerror="this.src='https://minotar.net/helm/char/24'">
+                        <span class="text-xs font-medium text-gray-200 truncate">${name}</span>
+                    </div>
+                    <button class="delete-btn text-gray-500 hover:text-red-400 p-1 rounded opacity-60 group-hover:opacity-100 transition-all shrink-0" title="削除">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+
+                item.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    savedSkins = savedSkins.filter(s => s !== name);
+                    localStorage.setItem('mc_saved_skins', JSON.stringify(savedSkins));
+                    renderSavedSkins();
+                });
+
+                listEl.appendChild(item);
+            });
+
+            lucide.createIcons();
+        }
+
+        document.getElementById('saveSkinBtn').addEventListener('click', () => {
+            if (!currentSkinName) return;
+            if (!savedSkins.includes(currentSkinName)) {
+                savedSkins.push(currentSkinName);
+                localStorage.setItem('mc_saved_skins', JSON.stringify(savedSkins));
+                renderSavedSkins();
+            } else {
+                showMessage(`"${currentSkinName}" は既にリストに保存されています。`);
+            }
+        });
+
+        document.getElementById('exportListBtn').addEventListener('click', () => {
+            if (savedSkins.length === 0) {
+                showMessage("エクスポートするスキンリストが空です。");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(savedSkins, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "minecraft_skins_list.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        document.getElementById('importListBtn').addEventListener('click', () => {
+            document.getElementById('importFileInput').click();
+        });
+
+        document.getElementById('importFileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const importedList = JSON.parse(event.target.result);
+                    if (Array.isArray(importedList) && importedList.every(item => typeof item === 'string')) {
+                        let newCount = 0;
+                        importedList.forEach(name => {
+                            if (!savedSkins.includes(name)) {
+                                savedSkins.push(name);
+                                newCount++;
+                            }
+                        });
+                        localStorage.setItem('mc_saved_skins', JSON.stringify(savedSkins));
+                        renderSavedSkins();
+                        showMessage(`${newCount} 件のスキンをリストに追加しました。`);
+                    } else {
+                        showMessage("無効なファイル形式です。正しいリストファイル形式（JSON）を選択してください。");
+                    }
+                } catch (err) {
+                    showMessage("ファイルの読み込みに失敗しました。");
+                }
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        });
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0d1117, 0.012);
+
+        const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 5, 45);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, 0, 0);
+        controls.maxDistance = 90;
+        controls.minDistance = 15;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        mainLight.position.set(15, 25, 20);
+        scene.add(mainLight);
+
+        const fillLight = new THREE.DirectionalLight(0x88bbff, 0.4);
+        fillLight.position.set(-15, -10, -15);
+        scene.addfill = fillLight;
+        scene.add(fillLight);
+
+        const gridHelper = new THREE.GridHelper(60, 30, 0x30363d, 0x161b22);
+        gridHelper.position.y = -12;
+        scene.add(gridHelper);
+
+        const uvInner = {
+            head: [ [16,8,8,8], [0,8,8,8], [8,0,8,8], [16,0,8,8], [8,8,8,8], [24,8,8,8] ],
+            body: [ [28,20,4,12], [16,20,4,12], [20,16,8,4], [28,16,8,4], [20,20,8,12], [32,20,8,12] ],
+            armR: [ [48,20,4,12], [40,20,4,12], [44,16,4,4], [48,16,4,4], [44,20,4,12], [52,20,4,12] ],
+            armL: [ [40,52,4,12], [32,52,4,12], [36,48,4,4], [40,48,4,4], [36,52,4,12], [44,52,4,12] ],
+            legR: [ [8,20,4,12], [0,20,4,12], [4,16,4,4], [8,16,4,4], [4,20,4,12], [12,20,4,12] ],
+            legL: [ [24,52,4,12], [16,52,4,12], [20,48,4,4], [24,48,4,4], [20,52,4,12], [28,52,4,12] ]
+        };
+
+        const uvOuter = {
+            head: [ [48,8,8,8], [32,8,8,8], [40,0,8,8], [48,0,8,8], [40,8,8,8], [56,8,8,8] ],
+            body: [ [28,36,4,12], [16,36,4,12], [20,32,8,4], [28,32,8,4], [20,36,8,12], [32,36,8,12] ],
+            armR: [ [48,36,4,12], [40,36,4,12], [44,32,4,4], [48,32,4,4], [44,36,4,12], [52,36,4,12] ],
+            armL: [ [56,52,4,12], [48,52,4,12], [52,48,4,4], [56,48,4,4], [52,52,4,12], [60,52,4,12] ],
+            legR: [ [8,36,4,12], [0,36,4,12], [4,32,4,4], [8,32,4,4], [4,36,4,12], [12,36,4,12] ],
+            legL: [ [8,52,4,12], [0,52,4,12], [4,48,4,4], [8,48,4,4], [4,52,4,12], [12,52,4,12] ]
+        };
+
+        function applyUVs(geometry, uvs) {
+            const uvAttr = geometry.attributes.uv;
+            for (let i = 0; i < 6; i++) {
+                const faceUv = uvs[i];
+                if (!faceUv) continue;
+                const [texU, texV, texW, texH] = faceUv;
+                const u1 = texU / 64;
+                const u2 = (texU + texW) / 64;
+                const v1 = 1 - ((texV + texH) / 64);
+                const v2 = 1 - (texV / 64);
+
+                const baseIdx = i * 4;
+                uvAttr.setXY(baseIdx + 0, u1, v2);
+                uvAttr.setXY(baseIdx + 1, u2, v2);
+                uvAttr.setXY(baseIdx + 2, u1, v1);
+                uvAttr.setXY(baseIdx + 3, u2, v1);
+            }
+            uvAttr.needsUpdate = true;
+        }
+
+        let playerGroup, innerMaterial, outerMaterial, skinTexture;
+        let bodyParts = {};
+        let outerParts = [];
+        let currentSkinName = 'Notch';
+
+        function buildPlayerModel() {
+            if (playerGroup) scene.remove(playerGroup);
+            playerGroup = new THREE.Group();
+            outerParts = [];
+
+            innerMaterial = new THREE.MeshStandardMaterial({
+                roughness: 0.8,
+                metalness: 0.1,
+                transparent: true,
+                alphaTest: 0.2
+            });
+            outerMaterial = new THREE.MeshStandardMaterial({
+                roughness: 0.8,
+                metalness: 0.1,
+                transparent: true,
+                alphaTest: 0.2,
+                side: THREE.DoubleSide
+            });
+
+            if (skinTexture) {
+                innerMaterial.map = skinTexture;
+                outerMaterial.map = skinTexture;
+            }
+
+            const scaleOuter = 1.05;
+
+            const headGeo = new THREE.BoxGeometry(8, 8, 8);
+            headGeo.translate(0, 4, 0);
+            applyUVs(headGeo, uvInner.head);
+            bodyParts.head = new THREE.Mesh(headGeo, innerMaterial);
+
+            const hatGeo = new THREE.BoxGeometry(8 * scaleOuter, 8 * scaleOuter, 8 * scaleOuter);
+            hatGeo.translate(0, 4, 0);
+            applyUVs(hatGeo, uvOuter.head);
+            const hatMesh = new THREE.Mesh(hatGeo, outerMaterial);
+            bodyParts.head.add(hatMesh);
+            outerParts.push(hatMesh);
+
+            bodyParts.head.position.set(0, 6, 0);
+            playerGroup.add(bodyParts.head);
+
+            const bodyGeo = new THREE.BoxGeometry(8, 12, 4);
+            applyUVs(bodyGeo, uvInner.body);
+            bodyParts.body = new THREE.Mesh(bodyGeo, innerMaterial);
+
+            const jacketGeo = new THREE.BoxGeometry(8 * scaleOuter, 12 * scaleOuter, 4 * scaleOuter);
+            applyUVs(jacketGeo, uvOuter.body);
+            const jacketMesh = new THREE.Mesh(jacketGeo, outerMaterial);
+            bodyParts.body.add(jacketMesh);
+            outerParts.push(jacketMesh);
+
+            bodyParts.body.position.set(0, 0, 0);
+            playerGroup.add(bodyParts.body);
+
+            const armRGeo = new THREE.BoxGeometry(4, 12, 4);
+            armRGeo.translate(0, -6, 0);
+            applyUVs(armRGeo, uvInner.armR);
+            bodyParts.armR = new THREE.Mesh(armRGeo, innerMaterial);
+
+            const sleeveRGeo = new THREE.BoxGeometry(4 * scaleOuter, 12 * scaleOuter, 4 * scaleOuter);
+            sleeveRGeo.translate(0, -6, 0);
+            applyUVs(sleeveRGeo, uvOuter.armR);
+            const sleeveRMesh = new THREE.Mesh(sleeveRGeo, outerMaterial);
+            bodyParts.armR.add(sleeveRMesh);
+            outerParts.push(sleeveRMesh);
+
+            bodyParts.armR.position.set(-6, 6, 0);
+            playerGroup.add(bodyParts.armR);
+
+            const armLGeo = new THREE.BoxGeometry(4, 12, 4);
+            armLGeo.translate(0, -6, 0);
+            applyUVs(armLGeo, uvInner.armL);
+            bodyParts.armL = new THREE.Mesh(armLGeo, innerMaterial);
+
+            const sleeveLGeo = new THREE.BoxGeometry(4 * scaleOuter, 12 * scaleOuter, 4 * scaleOuter);
+            sleeveLGeo.translate(0, -6, 0);
+            applyUVs(sleeveLGeo, uvOuter.armL);
+            const sleeveLMesh = new THREE.Mesh(sleeveLGeo, outerMaterial);
+            bodyParts.armL.add(sleeveLMesh);
+            outerParts.push(sleeveLMesh);
+
+            bodyParts.armL.position.set(6, 6, 0);
+            playerGroup.add(bodyParts.armL);
+
+            const legRGeo = new THREE.BoxGeometry(4, 12, 4);
+            legRGeo.translate(0, -6, 0);
+            applyUVs(legRGeo, uvInner.legR);
+            bodyParts.legR = new THREE.Mesh(legRGeo, innerMaterial);
+
+            const pantsRGeo = new THREE.BoxGeometry(4 * scaleOuter, 12 * scaleOuter, 4 * scaleOuter);
+            pantsRGeo.translate(0, -6, 0);
+            applyUVs(pantsRGeo, uvOuter.legR);
+            const pantsRMesh = new THREE.Mesh(pantsRGeo, outerMaterial);
+            bodyParts.legR.add(pantsRMesh);
+            outerParts.push(pantsRMesh);
+
+            bodyParts.legR.position.set(-2, -6, 0);
+            playerGroup.add(bodyParts.legR);
+
+            const legLGeo = new THREE.BoxGeometry(4, 12, 4);
+            legLGeo.translate(0, -6, 0);
+            applyUVs(legLGeo, uvInner.legL);
+            bodyParts.legL = new THREE.Mesh(legLGeo, innerMaterial);
+
+            const pantsLGeo = new THREE.BoxGeometry(4 * scaleOuter, 12 * scaleOuter, 4 * scaleOuter);
+            pantsLGeo.translate(0, -6, 0);
+            applyUVs(pantsLGeo, uvOuter.legL);
+            const pantsLMesh = new THREE.Mesh(pantsLGeo, outerMaterial);
+            bodyParts.legL.add(pantsLMesh);
+            outerParts.push(pantsLMesh);
+
+            bodyParts.legL.position.set(2, -6, 0);
+            playerGroup.add(bodyParts.legL);
+
+            scene.add(playerGroup);
+        }
+
+        function loadJavaSkin(username) {
+            setLoading(true, `"${username}" のスキンを取得中...`);
+            const skinUrl = `https://minotar.net/skin/${username}`;
+
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.setCrossOrigin("anonymous");
+
+            textureLoader.load(
+                skinUrl,
+                (loadedTexture) => {
+                    loadedTexture.magFilter = THREE.NearestFilter;
+                    loadedTexture.minFilter = THREE.NearestFilter;
+                    loadedTexture.encoding = THREE.sRGBEncoding;
+
+                    if (skinTexture) skinTexture.dispose();
+                    skinTexture = loadedTexture;
+
+                    if (innerMaterial && outerMaterial) {
+                        innerMaterial.map = skinTexture;
+                        outerMaterial.map = skinTexture;
+                        innerMaterial.needsUpdate = true;
+                        outerMaterial.needsUpdate = true;
+                    }
+
+                    currentSkinName = username;
+                    document.getElementById('usernameJava').value = username;
+                    setLoading(false);
+                },
+                undefined,
+                () => {
+                    setLoading(false);
+                    showMessage(`"${username}" のスキンが見つかりませんでした。ユーザーIDを確認してください。`);
+                }
+            );
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function exportGLTF() {
+            if (!playerGroup) {
+                showMessage("エクスポートするモデルが存在しません。");
+                return;
+            }
+
+            const exporter = new THREE.GLTFExporter();
+            exporter.parse(
+                playerGroup,
+                function (gltf) {
+                    const blob = new Blob([gltf], { type: 'application/octet-stream' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const link = document.createElement('a');
+                    link.style.display = 'none';
+                    link.href = url;
+                    link.download = `${currentSkinName}_Minecraft_Skin.glb`;
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                },
+                { binary: true }
+            );
+        }
+
+        document.getElementById('loadBtnJava').addEventListener('click', () => {
+            const username = document.getElementById('usernameJava').value.trim();
+            if (username) loadJavaSkin(username);
+            else showMessage("Minecraft Java版のユーザーIDを入力してください。");
+        });
+
+        document.getElementById('usernameJava').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('loadBtnJava').click();
+        });
+
+        document.getElementById('toggleOuter').addEventListener('change', (e) => {
+            const isVisible = e.target.checked;
+            outerParts.forEach(part => part.visible = isVisible);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', exportGLTF);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        buildPlayerModel();
+        renderSavedSkins();
+        loadJavaSkin('JPAPA');
+        animate();
+    </script>
+</body>
+</html>
